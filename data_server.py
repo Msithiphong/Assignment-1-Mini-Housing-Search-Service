@@ -37,10 +37,10 @@ def RAW_LIST():
 def RAW_SEARCH(city, max_price):
     """ Filters listings by city and max price and returns them as a json object """
     
-    searched_listings = []
+    searched_listings = None
     for listing in listings_array:
         if (listing["city"] == city) & (int(listing["price"]) <= max_price):
-            searched_listings = listing
+            searched_listings.append(listing)
     
     return searched_listings
     
@@ -62,12 +62,7 @@ def parse_command(cmd_str):
 
     return command, parameters
 
-def check_command(command, parameters):
-    """ Checks if command is malformed and responds with an error string """
-    if command != "RAW_SEARCH" | command != "RAW_LIST":
-        print("Command must be RAW_SEARCH or RAW_LIST")
-    elif command == "RAW_SEARCH" & parameters.length != 2:
-        print("RAW_SEARCH must have 2 parameters")
+
         
         
         
@@ -92,7 +87,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
             # Parse the command
             command, parameters = parse_command(message)
-            check_command(command, parameters)
+            
                 
             if command == "RAW_SEARCH":
                 city = parameters.get('city', '') # returns '' if 'city' not found
@@ -102,7 +97,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 conn.sendall(response.encode('utf-8')) # encode and send to app_server
             elif command == "RAW_LIST":
                raw_list = RAW_LIST()
-               conn.sendall(raw_list.encode('utf-8')) 
+               response = json.dumps(raw_list)
+               conn.sendall(response.encode('utf-8')) 
             else:
                 error_msg = json.dumps({"error": "Unknown command"})
                 conn.sendall(error_msg.encode('utf-8'))
