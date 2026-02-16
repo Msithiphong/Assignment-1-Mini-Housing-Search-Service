@@ -1,7 +1,27 @@
-{
-    "id": 1,
-    "city": "Long Beach",
-    "address": "123 Ocean Blvd",
-    "price": 2200,
-    "bedrooms": 2
-}
+[
+  {"id": 1, "city": "LongBeach", "address": "123 Ocean Blvd", "price": 2200, "bedrooms": 2},
+  {"id": 2, "city": "LongBeach", "address": "450 Pine Ave", "price": 1850, "bedrooms": 1},
+  {"id": 3, "city": "LongBeach", "address": "789 Belmont Shore Dr", "price": 3200, "bedrooms": 3},
+  {"id": 4, "city": "LongBeach", "address": "1020 Atlantic Ave", "price": 2500, "bedrooms": 2},
+  {"id": 5, "city": "LongBeach", "address": "3500 E Anaheim St", "price": 1950, "bedrooms": 1},
+  {"id": 6, "city": "LongBeach", "address": "210 Cherry Ave", "price": 2700, "bedrooms": 2},
+
+  {"id": 7, "city": "SealBeach", "address": "15 Main St", "price": 2900, "bedrooms": 2},
+  {"id": 8, "city": "SealBeach", "address": "890 Marina Dr", "price": 3400, "bedrooms": 3},
+  {"id": 9, "city": "SealBeach", "address": "240 Pacific Coast Hwy", "price": 2100, "bedrooms": 1},
+
+  {"id": 10, "city": "Lakewood", "address": "5500 South St", "price": 2300, "bedrooms": 2},
+  {"id": 11, "city": "Lakewood", "address": "4123 Woodruff Ave", "price": 2600, "bedrooms": 3},
+  {"id": 12, "city": "Lakewood", "address": "6300 Del Amo Blvd", "price": 1800, "bedrooms": 1},
+
+  {"id": 13, "city": "SignalHill", "address": "1800 Cherry Ave", "price": 2400, "bedrooms": 2},
+  {"id": 14, "city": "SignalHill", "address": "2600 Skyline Dr", "price": 3100, "bedrooms": 3},
+
+  {"id": 15, "city": "Carson", "address": "500 E Carson St", "price": 2000, "bedrooms": 1},
+  {"id": 16, "city": "Carson", "address": "1800 Avalon Blvd", "price": 2550, "bedrooms": 2},
+  {"id": 17, "city": "Carson", "address": "2200 Torrance Blvd", "price": 2800, "bedrooms": 3},
+
+  {"id": 18, "city": "Torrance", "address": "2150 Sepulveda Blvd", "price": 3000, "bedrooms": 2},
+  {"id": 19, "city": "Torrance", "address": "3300 Del Amo Blvd", "price": 3500, "bedrooms": 3},
+  {"id": 20, "city": "Torrance", "address": "1200 Hawthorne Blvd", "price": 2100, "bedrooms": 1}
+]
