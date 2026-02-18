@@ -133,30 +133,67 @@ Closing connection...
 Connection closed.
 ```
 
-## Error Messages
-
-| Error | Meaning |
-|-------|---------|
-| `ERROR unknown command` | Invalid command sent to server |
-| `ERROR max_price must be an int` | Price parameter is not a number |
-| `ERROR data_server bad response` | Data server returned invalid data |
-| `OK RESULT 0` | No listings match your search criteria |
-
 ## Logs
 
 The app server creates `app_server.log` with timestamped events:
 - Client connections/disconnections
 - Request forwarding to data server
 - Response summaries
+- Cache hits and misses
 
 **Example log entries:**
 ```
 [2026-02-17 14:23:45] CONNECT ('127.0.0.1', 54321)
 [2026-02-17 14:23:50] REQUEST ('127.0.0.1', 54321): SEARCH city=Long%20Beach max_price=2500
+[2026-02-17 14:23:50] CACHE MISS ('127.0.0.1', 54321): SEARCH:Long Beach:2500
 [2026-02-17 14:23:50] FORWARD ('127.0.0.1', 54321): RAW_SEARCH city=Long Beach max_price=2500
 [2026-02-17 14:23:50] RESPONSE ('127.0.0.1', 54321): OK RESULT 2
+[2026-02-17 14:23:55] REQUEST ('127.0.0.1', 54321): SEARCH city=Long%20Beach max_price=2500
+[2026-02-17 14:23:55] CACHE HIT ('127.0.0.1', 54321): SEARCH:Long Beach:2500
+[2026-02-17 14:23:55] RESPONSE ('127.0.0.1', 54321): OK RESULT 2
 [2026-02-17 14:24:00] DISCONNECT ('127.0.0.1', 54321)
 ```
+
+## Caching
+
+The app server implements response caching to reduce load on the data server and improve performance.
+
+### Cache Configuration
+
+Edit `app_server.py` to configure caching behavior:
+
+```python
+# Cache settings
+CACHE_ENABLED = True  # Set to False to disable caching
+CACHE = {}
+CACHE_TTL = 60  # seconds
+```
+
+**Settings:**
+- **CACHE_ENABLED**: Set to `True` to enable caching, `False` to disable
+- **CACHE_TTL**: Time-to-live in seconds (default: 60)
+
+### How Caching Works
+
+- Each `LIST` and `SEARCH` request is cached with a unique key
+- Cache entries expire after `CACHE_TTL` seconds
+- Cache hits return immediately without querying the data server
+- Cache misses forward the request to the data server and store the result
+- Error responses are also cached to prevent repeated failed queries
+
+### Enabling/Disabling Cache
+
+**To disable caching:**
+1. Open `app_server.py`
+2. Change `CACHE_ENABLED = True` to `CACHE_ENABLED = False`
+3. Restart the app server
+
+**To enable caching:**
+1. Open `app_server.py`
+2. Change `CACHE_ENABLED = False` to `CACHE_ENABLED = True`
+3. Restart the app server
+
+**Note:** Changes require restarting the app server to take effect.
 
 ## Stopping the Services
 
@@ -168,20 +205,6 @@ The app server creates `app_server.log` with timestamped events:
 
 ## Troubleshooting
 
-### "Address already in use" error
-
-If you see `[Errno 48] Address already in use`:
-
-```bash
-# Find the process using port 4000 (app_server) or 3000 (data_server)
-lsof -ti:4000
-
-# Kill the process
-kill -9 $(lsof -ti:4000)
-```
-
-Wait 30-60 seconds for the TIME_WAIT state to clear, then restart the server.
-
 ### Connection refused
 
 Ensure servers are started in order:
@@ -189,12 +212,6 @@ Ensure servers are started in order:
 2. App server second (port 4000)
 3. Client last
 
-### No results when searching
-
-- Check spelling of city name (case-insensitive, spaces allowed)
-- Verify listings exist in `listings.json` for that city
-- Try increasing the max_price value
-- Use `LIST` command to see all available cities
 
 ## Example Session
 
@@ -229,12 +246,3 @@ Closing connection...
 Connection closed.
 ```
 
-## Technical Details
-
-- **Protocol**: TCP sockets with UTF-8 encoding
-- **Data Format**: JSON for server communication, formatted text for client
-- **Port Numbers**: 
-  - Data Server: 3000
-  - App Server: 4000
-- **URL Encoding**: City names are URL-encoded to handle spaces in transit
-- **Case Sensitivity**: City searches are case-insensitive
