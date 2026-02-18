@@ -9,6 +9,7 @@ APP_HOST, APP_PORT = "127.0.0.1", 4000
 DATA_HOST, DATA_PORT = "127.0.0.1", 3000
 
 # Cache settings
+CACHE_ENABLED = True  # Set to False to disable caching
 CACHE = {}
 CACHE_TTL = 60  # seconds
 
@@ -19,6 +20,9 @@ def log_event(msg: str):
 
 def get_from_cache(key):
     """Check if key exists in cache and hasn't expired."""
+    if not CACHE_ENABLED:
+        return None
+    
     if key in CACHE:
         ts, data = CACHE[key]
         if time.time() - ts < CACHE_TTL:
@@ -30,6 +34,8 @@ def get_from_cache(key):
 
 def save_to_cache(key, data):
     """Save data to cache with current timestamp."""
+    if not CACHE_ENABLED:
+        return
     CACHE[key] = (time.time(), data)
 
 def rank_listings(lst):
