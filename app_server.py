@@ -1,6 +1,7 @@
 import socket
 import json
 from datetime import datetime
+from urllib.parse import unquote, quote
 
 LOG_FILE = "app_server.log"
 APP_HOST, APP_PORT = "127.0.0.1", 4000
@@ -84,14 +85,15 @@ def handle_client(csock,addr, ds_sock):
                     if "=" in p:
                         k, v = p.split("=", 1)
                         params[k] = v
-                city = params.get("city", "")
+                city = unquote(params.get("city", ""))  # URL-decode city name
                 try:
                     max_price = int(params.get("max_price", ""))
                 except Exception:
                     csock.sendall(b"ERROR max_price must be an int\n")
                     continue
 
-                ds_cmd = f"RAW_SEARCH city={city} max_price={max_price}"
+                # URL-encode city for data_server (to handle spaces)
+                ds_cmd = f"RAW_SEARCH city={quote(city)} max_price={max_price}"
                 log_event(f"FORWARD {addr}: {ds_cmd}")
                 raw = read_json(ds_sock, ds_cmd)
 

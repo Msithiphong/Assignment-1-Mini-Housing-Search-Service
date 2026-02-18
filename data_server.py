@@ -1,6 +1,7 @@
 import socket
 import json
 import os
+from urllib.parse import unquote
 
 # Host and Port to listen on
 HOST = '127.0.0.1'
@@ -29,7 +30,7 @@ if not listings_array:
     print("listings failed to load or listings.json does not exist")
 
 def RAW_LIST():
-    """ Prints all listings in an array """
+    """ Returns all listings in an array """
     
     return listings_array
     
@@ -37,9 +38,10 @@ def RAW_LIST():
 def RAW_SEARCH(city, max_price):
     """ Filters listings by city and max price and returns them as a json object """
     
-    searched_listings = None
+    searched_listings = []
     for listing in listings_array:
-        if (listing["city"] == city) & (int(listing["price"]) <= max_price):
+        # Case-insensitive comparison
+        if (listing["city"].lower() == city.lower()) and (int(listing["price"]) <= max_price):
             searched_listings.append(listing)
     
     return searched_listings
@@ -90,7 +92,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             
                 
             if command == "RAW_SEARCH":
-                city = parameters.get('city', '') # returns '' if 'city' not found
+                city = unquote(parameters.get('city', '')) # URL-decode city name
                 max_price = int(parameters.get('max_price', 0)) #  returns 0 if 'max_price' not found
                 search = RAW_SEARCH(city, max_price)
                 response = json.dumps(search)
@@ -102,8 +104,3 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             else:
                 error_msg = json.dumps({"error": "Unknown command"})
                 conn.sendall(error_msg.encode('utf-8'))
-
-                
-                
-
-            conn.sendall(data) # Echo received data back to the client
