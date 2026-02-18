@@ -1,5 +1,6 @@
 import socket
 import json
+import time
 from datetime import datetime
 from urllib.parse import unquote, quote
 
@@ -7,10 +8,29 @@ LOG_FILE = "app_server.log"
 APP_HOST, APP_PORT = "127.0.0.1", 4000
 DATA_HOST, DATA_PORT = "127.0.0.1", 3000
 
+# Cache settings
+CACHE = {}
+CACHE_TTL = 60  # seconds
+
 def log_event(msg: str):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {msg}\n")
+
+def get_from_cache(key):
+    """Check if key exists in cache and hasn't expired."""
+    if key in CACHE:
+        ts, data = CACHE[key]
+        if time.time() - ts < CACHE_TTL:
+            return data
+        else:
+            # Expired, remove from cache
+            del CACHE[key]
+    return None
+
+def save_to_cache(key, data):
+    """Save data to cache with current timestamp."""
+    CACHE[key] = (time.time(), data)
 
 def rank_listings(lst):
     return sorted(lst, key=lambda x: (int(x.get("price", 10**18)), -int(x.get("bedrooms", 0))))
@@ -70,14 +90,25 @@ def handle_client(csock,addr, ds_sock):
                 csock.sendall(b"OK bye\n")
                 return
             elif cmd == "LIST":
-                log_event(f"FORWARD {addr}: RAW_LIST")
-                raw = read_json(ds_sock, "RAW_LIST")
-                if not isinstance(raw, list):
-                    csock.sendall(b"ERROR data_server bad response\n")
-                else:
-                    results = rank_listings(raw)
+                cache_key = "LIST"
+                cached_data = get_from_cache(cache_key)
+                
+                if cached_data is not None:
+                    log_event(f"CACHE HIT {addr}: {cache_key}")
+                    results = rank_listings(cached_data)
                     log_event(f"RESPONSE {addr}: OK RESULT {len(results)}")
                     csock.sendall(fmt_results(results).encode("utf-8"))
+                else:
+                    log_event(f"CACHE MISS {addr}: {cache_key}")
+                    log_event(f"FORWARD {addr}: RAW_LIST")
+                    raw = read_json(ds_sock, "RAW_LIST")
+                    if not isinstance(raw, list):
+                        csock.sendall(b"ERROR data_server bad response\n")
+                    else:
+                        save_to_cache(cache_key, raw)
+                        results = rank_listings(raw)
+                        log_event(f"RESPONSE {addr}: OK RESULT {len(results)}")
+                        csock.sendall(fmt_results(results).encode("utf-8"))
 
             elif cmd == "SEARCH":
                 params = {}
@@ -92,19 +123,35 @@ def handle_client(csock,addr, ds_sock):
                     csock.sendall(b"ERROR max_price must be an int\n")
                     continue
 
-                # URL-encode city for data_server (to handle spaces)
-                ds_cmd = f"RAW_SEARCH city={quote(city)} max_price={max_price}"
-                log_event(f"FORWARD {addr}: {ds_cmd}")
-                raw = read_json(ds_sock, ds_cmd)
-
-                if isinstance(raw, dict) and "error" in raw:
-                    csock.sendall(f"ERROR {raw['error']}\n".encode("utf-8"))
-                elif not isinstance(raw, list):
-                    csock.sendall(b"ERROR data_server bad response\n")
+                # Create cache key from search parameters
+                cache_key = f"SEARCH:{city}:{max_price}"
+                cached_data = get_from_cache(cache_key)
+                
+                if cached_data is not None:
+                    log_event(f"CACHE HIT {addr}: {cache_key}")
+                    if isinstance(cached_data, dict) and "error" in cached_data:
+                        csock.sendall(f"ERROR {cached_data['error']}\n".encode("utf-8"))
+                    else:
+                        results = rank_listings(cached_data)
+                        log_event(f"RESPONSE {addr}: OK RESULT {len(results)}")
+                        csock.sendall(fmt_results(results).encode("utf-8"))
                 else:
-                    results = rank_listings(raw)
-                    log_event(f"RESPONSE {addr}: OK RESULT {len(results)}")
-                    csock.sendall(fmt_results(results).encode("utf-8"))
+                    log_event(f"CACHE MISS {addr}: {cache_key}")
+                    # URL-encode city for data_server (to handle spaces)
+                    ds_cmd = f"RAW_SEARCH city={quote(city)} max_price={max_price}"
+                    log_event(f"FORWARD {addr}: {ds_cmd}")
+                    raw = read_json(ds_sock, ds_cmd)
+
+                    if isinstance(raw, dict) and "error" in raw:
+                        save_to_cache(cache_key, raw)
+                        csock.sendall(f"ERROR {raw['error']}\n".encode("utf-8"))
+                    elif not isinstance(raw, list):
+                        csock.sendall(b"ERROR data_server bad response\n")
+                    else:
+                        save_to_cache(cache_key, raw)
+                        results = rank_listings(raw)
+                        log_event(f"RESPONSE {addr}: OK RESULT {len(results)}")
+                        csock.sendall(fmt_results(results).encode("utf-8"))
 
             else:
                 csock.sendall(b"ERROR unknown command\n")
